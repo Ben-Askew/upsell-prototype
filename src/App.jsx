@@ -182,8 +182,9 @@ function Stepper({ value, onChange }) {
 }
 
 function Checkbox({ checked, onChange }) {
+  const Tag = onChange ? "button" : "div";
   return (
-    <button onClick={onChange} className="w-6 h-6 flex items-center justify-center shrink-0">
+    <Tag onClick={onChange} className="w-6 h-6 flex items-center justify-center shrink-0">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <rect
           x="0.5" y="0.5" width="19" height="19" rx="3.5"
@@ -202,7 +203,7 @@ function Checkbox({ checked, onChange }) {
           }}
         />
       </svg>
-    </button>
+    </Tag>
   );
 }
 
@@ -267,7 +268,7 @@ function CheckboxRow({ title, price, checked, onChange }) {
         trailing={
           <div className="flex items-center gap-2">
             {price && <span className="text-[16px] text-text-primary">{price}</span>}
-            <Checkbox checked={checked} onChange={onChange} />
+            <Checkbox checked={checked} />
           </div>
         }
       />
@@ -871,7 +872,7 @@ export default function App() {
     setTimeout(() => setActiveScreen(screen), 300);
   };
 
-  const translateX = `translateX(${positions[targetScreen] * (100 / 3)}%)`;
+  const translateX = `translateX(${positions[targetScreen] * 100}%)`;
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-black">
