@@ -851,73 +851,27 @@ function CheckoutScreen({ order, onBack }) {
 }
 
 export default function App() {
-  const [screen, setScreen] = useState("single");
-  const [direction, setDirection] = useState("forward");
-  const [transitioning, setTransitioning] = useState(false);
+  const [activeScreen, setActiveScreen] = useState("single");
+  const [targetScreen, setTargetScreen] = useState("single");
   const [resetKey, setResetKey] = useState(0);
   const [orderData, setOrderData] = useState(null);
 
+  const positions = { single: 0, upsell: -1, checkout: -2 };
+
   const handleReset = () => {
     setResetKey((k) => k + 1);
-    setScreen("single");
-    setDirection("forward");
-    setTransitioning(false);
+    setActiveScreen("single");
+    setTargetScreen("single");
     setOrderData(null);
   };
 
-  const goToUpsell = () => {
-    setDirection("forward");
-    setTransitioning(true);
-    setTimeout(() => {
-      setScreen("upsell");
-      setTransitioning(false);
-    }, 300);
+  const navigateTo = (screen, data) => {
+    if (data !== undefined) setOrderData(data);
+    setTargetScreen(screen);
+    setTimeout(() => setActiveScreen(screen), 300);
   };
 
-  const goToSingle = () => {
-    setDirection("back");
-    setTransitioning(true);
-    setTimeout(() => {
-      setScreen("single");
-      setTransitioning(false);
-    }, 300);
-  };
-
-  const goToCheckout = (data) => {
-    setOrderData(data);
-    setDirection("forward");
-    setTransitioning(true);
-    setTimeout(() => {
-      setScreen("checkout");
-      setTransitioning(false);
-    }, 300);
-  };
-
-  const goBackFromCheckout = () => {
-    setDirection("back");
-    setTransitioning(true);
-    setTimeout(() => {
-      setScreen(orderData?.type === "meal" ? "upsell" : "single");
-      setTransitioning(false);
-    }, 300);
-  };
-
-  const getTranslateX = () => {
-    const positions = { single: 0, upsell: -1, checkout: -2 };
-    const currentPos = positions[screen] || 0;
-
-    if (!transitioning) return `translateX(${currentPos * (100 / 3)}%)`;
-
-    if (direction === "forward") {
-      const nextScreen = screen === "single" ? "upsell" : screen === "upsell" ? "checkout" : "checkout";
-      const nextPos = positions[nextScreen] || 0;
-      return `translateX(${nextPos * (100 / 3)}%)`;
-    } else {
-      const prevScreen = screen === "checkout" ? (orderData?.type === "meal" ? "upsell" : "single") : "single";
-      const prevPos = positions[prevScreen] || 0;
-      return `translateX(${prevPos * (100 / 3)}%)`;
-    }
-  };
+  const translateX = `translateX(${positions[targetScreen] * (100 / 3)}%)`;
 
   return (
     <div className="w-full h-full relative overflow-hidden bg-black">
@@ -927,17 +881,17 @@ export default function App() {
       <div className="relative flex-1" style={{ height: "calc(100% - 65px)" }} key={resetKey}>
         <div
           className="absolute inset-0 transition-transform duration-300 ease-in-out"
-          style={{ transform: getTranslateX() }}
+          style={{ transform: translateX }}
         >
           <div className="absolute inset-0" style={{ width: "300%", display: "flex" }}>
             <div style={{ width: "33.333%" }} className="h-full">
-              <SingleItemScreen onUpgrade={goToUpsell} onAdd={goToCheckout} />
+              <SingleItemScreen onUpgrade={() => navigateTo("upsell")} onAdd={(data) => navigateTo("checkout", data)} />
             </div>
             <div style={{ width: "33.333%" }} className="h-full">
-              <ItemUpsellScreen onBack={goToSingle} onAdd={goToCheckout} />
+              <ItemUpsellScreen onBack={() => navigateTo("single")} onAdd={(data) => navigateTo("checkout", data)} />
             </div>
             <div style={{ width: "33.333%" }} className="h-full">
-              <CheckoutScreen order={orderData} onBack={goBackFromCheckout} />
+              <CheckoutScreen order={orderData} onBack={() => navigateTo(orderData?.type === "meal" ? "upsell" : "single")} />
             </div>
           </div>
         </div>
