@@ -591,6 +591,7 @@ function ChevronRight() {
 function CheckoutScreen({ order, onBack }) {
   const [cutlery, setCutlery] = useState(false);
   const [roundUp, setRoundUp] = useState(false);
+  const [riderTip, setRiderTip] = useState(0);
   const scrollRef = useRef(null);
 
   let mainItem = null;
@@ -613,10 +614,17 @@ function CheckoutScreen({ order, onBack }) {
   }
 
   const itemsSubtotal = (mainItem?.price || 0) + extraItems.reduce((sum, item) => sum + item.price, 0);
+  const originalServiceFee = 1.15;
   const serviceFee = 0.99;
-  const roundUpAmount = roundUp ? 0.52 : 0;
-  const orderTotal = itemsSubtotal + serviceFee + roundUpAmount;
-  const savings = (0.16 + 0.79).toFixed(2);
+  const originalDeliveryFee = 0.79;
+  const deliveryFee = 0;
+  const serviceFeeSaving = originalServiceFee - serviceFee;
+  const deliveryFeeSaving = originalDeliveryFee - deliveryFee;
+  const feeSavings = serviceFeeSaving + deliveryFeeSaving;
+  const subtotalBeforeExtras = itemsSubtotal + serviceFee + deliveryFee;
+  const roundUpAmount = roundUp ? (Math.ceil(subtotalBeforeExtras) - subtotalBeforeExtras) || 1 : 0;
+  const orderTotal = itemsSubtotal + serviceFee + deliveryFee + roundUpAmount + riderTip;
+  const totalSavings = feeSavings;
 
   const suggestedItems = [
     { name: "Popcorn Chicken", cal: "307 kcal", price: "£5.99", img: "https://brand-uk.assets.kfc.co.uk/2022-11/MOBORDER_REGULAR_POPCORN_CHICKEN_1200x800%20%281%29.jpg" },
@@ -733,25 +741,25 @@ function CheckoutScreen({ order, onBack }) {
           <Divider inset />
           <div className="flex items-center px-4 py-3">
             <span className="flex-1 text-[16px] text-text-primary leading-6">Service fee</span>
-            <span className="text-[14px] text-text-muted line-through mr-2">£1.15</span>
+            <span className="text-[14px] text-text-muted line-through mr-2">£{originalServiceFee.toFixed(2)}</span>
             <span className="text-[16px] text-text-primary">£{serviceFee.toFixed(2)}</span>
           </div>
           <Divider inset />
           <div className="flex items-center px-4 py-3">
             <span className="flex-1 text-[16px] text-text-primary leading-6">Delivery fee</span>
-            <span className="text-[14px] text-text-muted line-through mr-2">£0.79</span>
+            <span className="text-[14px] text-text-muted line-through mr-2">£{originalDeliveryFee.toFixed(2)}</span>
             <span className="text-[16px] text-brand font-bold">Free</span>
           </div>
         </div>
         <div className="mx-4 mt-2 rounded-lg overflow-hidden">
           <div className="bg-[#7B2D8E] px-4 py-3">
-            <p className="text-[14px] font-bold text-white leading-5">You're saving £{savings} on fees!</p>
+            <p className="text-[14px] font-bold text-white leading-5">You're saving £{feeSavings.toFixed(2)} on fees!</p>
           </div>
           <div className="bg-[#F3E8F7] px-4 py-2.5">
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-2">
                 <span className="text-[14px]">🚲</span>
-                <span className="text-[14px] text-text-primary leading-5">£0.16 service fee saving</span>
+                <span className="text-[14px] text-text-primary leading-5">£{serviceFeeSaving.toFixed(2)} service fee saving</span>
               </div>
               <div className="w-[42px] h-[18px] rounded bg-[#7B2D8E] flex items-center justify-center">
                 <span className="text-white text-[9px] font-bold">plus</span>
@@ -760,7 +768,7 @@ function CheckoutScreen({ order, onBack }) {
             <div className="flex items-center justify-between py-1">
               <div className="flex items-center gap-2">
                 <span className="text-[14px]">🚲</span>
-                <span className="text-[14px] text-text-primary leading-5">£0.79 delivery fee saving</span>
+                <span className="text-[14px] text-text-primary leading-5">£{deliveryFeeSaving.toFixed(2)} delivery fee saving</span>
               </div>
               <div className="w-[42px] h-[18px] rounded bg-[#7B2D8E] flex items-center justify-center">
                 <span className="text-white text-[9px] font-bold">plus</span>
@@ -793,7 +801,7 @@ function CheckoutScreen({ order, onBack }) {
           <Divider inset />
           <div className="flex items-center px-4 py-3">
             <span className="flex-1 text-[16px] text-text-primary leading-6">Round up</span>
-            <span className="text-[16px] text-text-primary mr-3">£{roundUpAmount.toFixed(2)}</span>
+            <span className="text-[16px] text-text-primary mr-3">£{(roundUp ? roundUpAmount : (Math.ceil(subtotalBeforeExtras) - subtotalBeforeExtras) || 1).toFixed(2)}</span>
             <ToggleSwitch on={roundUp} onToggle={() => setRoundUp(!roundUp)} />
           </div>
           <Divider inset />
@@ -820,17 +828,23 @@ function CheckoutScreen({ order, onBack }) {
               <span className="text-[16px]">🙂</span>
             </div>
             <div className="flex items-center gap-3">
-              <button className="w-7 h-7 rounded-full border border-border-subtle flex items-center justify-center">
+              <button
+                onClick={() => setRiderTip((t) => Math.max(0, +(t - 0.50).toFixed(2)))}
+                className={`w-7 h-7 rounded-full border flex items-center justify-center ${riderTip > 0 ? "border-brand" : "border-border-subtle"}`}
+              >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M3 7h8" stroke="#BAC3C3" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M3 7h8" stroke={riderTip > 0 ? "#00CCBC" : "#BAC3C3"} strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="w-7 h-7 rounded-full bg-brand flex items-center justify-center">
+              <button
+                onClick={() => setRiderTip((t) => +(t + 0.50).toFixed(2))}
+                className="w-7 h-7 rounded-full bg-brand flex items-center justify-center"
+              >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M7 3v8M3 7h8" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
               </button>
-              <span className="text-[16px] text-text-primary ml-1">£0.00</span>
+              <span className="text-[16px] text-text-primary ml-1">£{riderTip.toFixed(2)}</span>
             </div>
           </div>
           <Divider />
@@ -839,7 +853,7 @@ function CheckoutScreen({ order, onBack }) {
             <span className="text-[16px] font-bold text-text-primary">£{orderTotal.toFixed(2)}</span>
           </div>
           <div className="mx-4 mt-1 mb-3 p-2.5 bg-[#E8F8F5] rounded-lg flex items-center justify-between">
-            <span className="text-[13px] text-brand font-bold">You're saving a total of £{savings}!</span>
+            <span className="text-[13px] text-brand font-bold">You're saving a total of £{totalSavings.toFixed(2)}!</span>
             <div className="w-6 h-6 rounded bg-brand flex items-center justify-center shrink-0">
               <span className="text-white text-[8px] font-bold">plus</span>
             </div>
