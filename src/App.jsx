@@ -26,24 +26,27 @@ const FRIES_PRICES = {
 
 const DRINK_SIZE_PRICES = { Large: 2.0, Medium: 1.5, Small: 0 };
 
-function StatusBar({ onReset }) {
+function StatusBar({ onReset, light }) {
+  const bg = light ? "bg-white" : "bg-black";
+  const fg = light ? "text-black" : "text-white";
+  const iconColor = light ? "black" : "white";
   return (
-    <div className="flex items-center justify-between px-6 pt-3 pb-1 bg-black text-white">
+    <div className={`flex items-center justify-between px-6 pt-3 pb-1 transition-colors duration-300 ${bg} ${fg}`}>
       <span className="text-[15px] font-semibold tracking-tight cursor-default select-none" onClick={onReset}>19:41</span>
       <div className="flex items-center gap-1">
         <svg width="17" height="12" viewBox="0 0 17 12" fill="none">
-          <rect x="0" y="7" width="3" height="5" rx="0.5" fill="white" />
-          <rect x="4.5" y="4.5" width="3" height="7.5" rx="0.5" fill="white" />
-          <rect x="9" y="2" width="3" height="10" rx="0.5" fill="white" />
-          <rect x="13.5" y="0" width="3" height="12" rx="0.5" fill="white" opacity="0.35" />
+          <rect x="0" y="7" width="3" height="5" rx="0.5" fill={iconColor} />
+          <rect x="4.5" y="4.5" width="3" height="7.5" rx="0.5" fill={iconColor} />
+          <rect x="9" y="2" width="3" height="10" rx="0.5" fill={iconColor} />
+          <rect x="13.5" y="0" width="3" height="12" rx="0.5" fill={iconColor} opacity="0.35" />
         </svg>
-        <svg width="16" height="12" viewBox="0 0 16 12" fill="white">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill={iconColor}>
           <path d="M8 3.6c1.7 0 3.2.7 4.3 1.8l1.4-1.4C12 2.3 10.1 1.4 8 1.4S4 2.3 2.3 4l1.4 1.4C4.8 4.3 6.3 3.6 8 3.6zM8 6.8c.9 0 1.7.4 2.3 1l1.4-1.4C10.6 5.3 9.4 4.8 8 4.8s-2.6.5-3.7 1.6l1.4 1.4c.6-.6 1.4-1 2.3-1zM9.2 9.2a1.7 1.7 0 10-2.4 0 1.7 1.7 0 002.4 0z" />
         </svg>
         <svg width="25" height="12" viewBox="0 0 25 12" fill="none">
-          <rect x="0.5" y="0.5" width="21" height="11" rx="2" stroke="white" strokeOpacity="0.35" />
-          <rect x="2" y="2" width="18" height="8" rx="1" fill="white" />
-          <rect x="23" y="4" width="2" height="4" rx="1" fill="white" opacity="0.4" />
+          <rect x="0.5" y="0.5" width="21" height="11" rx="2" stroke={iconColor} strokeOpacity="0.35" />
+          <rect x="2" y="2" width="18" height="8" rx="1" fill={iconColor} />
+          <rect x="23" y="4" width="2" height="4" rx="1" fill={iconColor} opacity="0.4" />
         </svg>
       </div>
     </div>
@@ -510,7 +513,7 @@ function ItemUpsellScreen({ onBack, onAdd }) {
                   <div className="shrink-0" style={{ minWidth: 14 }} />
                 </div>
               </div>
-              <SectionHeader title="Choose your fries" />
+              <SectionHeader title="Choose your fries" trailing={<span className="text-[14px] text-text-muted">Required</span>} />
               {Object.entries(FRIES_PRICES).map(([name, price]) => (
                 <div key={name}>
                   <MobileRow title={name} onClick={() => setSelectedFries(name)} trailing={
@@ -522,7 +525,7 @@ function ItemUpsellScreen({ onBack, onAdd }) {
                   <Divider inset />
                 </div>
               ))}
-              <SectionHeader title="Frequently added drinks" />
+              <SectionHeader title="Choose your drink" trailing={<span className="text-[14px] text-text-muted">Required</span>} />
               {drinks.map((drink) => (
                 <div key={drink}>
                   <MobileRow title={drink} onClick={() => setExpandedDrink(expandedDrink === drink ? null : drink)} hasChevron trailing={null} />
@@ -577,38 +580,51 @@ function ToggleSwitch({ on, onToggle }) {
   );
 }
 
+function ChevronRight() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M6.75 4.5L11.25 9L6.75 13.5" stroke="#1ba69c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function CheckoutScreen({ order, onBack }) {
-  const [deliveryType, setDeliveryType] = useState("standard");
   const [cutlery, setCutlery] = useState(false);
   const [roundUp, setRoundUp] = useState(false);
-  const [credit, setCredit] = useState(false);
   const scrollRef = useRef(null);
 
-  const basketItems = [];
+  let mainItem = null;
+  const extraItems = [];
+
   if (order) {
     if (order.type === "meal") {
-      basketItems.push({ qty: order.quantity, name: order.name, subtitle: "With extra burger", price: order.basePrice * order.quantity });
-      if (order.fries) {
-        const fp = FRIES_PRICES[order.fries] || 0;
-        basketItems.push({ qty: order.quantity, name: order.fries, price: (fp > 0 ? fp : 3.49) * order.quantity });
-      }
-      if (order.drink) {
-        basketItems.push({ qty: order.quantity, name: `${order.drink.size} ${order.drink.name}`, price: (order.drink.price > 0 ? order.drink.price : 1.99) * order.quantity });
-      }
+      const parts = [];
+      if (order.fries) parts.push(order.fries);
+      if (order.drink) parts.push(`${order.drink.size} ${order.drink.name}`);
+      const subtitle = parts.length > 0 ? parts.join(", ") : null;
+      const itemPrice = order.basePrice + (order.friesPrice || 0) + (order.drink?.price || 0);
+      mainItem = { qty: order.quantity, name: order.name, subtitle, price: itemPrice * order.quantity };
     } else {
-      basketItems.push({ qty: order.quantity, name: order.name, price: order.basePrice * order.quantity });
+      mainItem = { qty: order.quantity, name: order.name, subtitle: null, price: order.basePrice * order.quantity };
     }
     order.extras.forEach((extra) => {
-      basketItems.push({ qty: order.quantity, name: extra, price: (EXTRA_PRICES[extra] || 0) * order.quantity });
+      extraItems.push({ qty: order.quantity, name: extra, price: (EXTRA_PRICES[extra] || 0) * order.quantity });
     });
   }
 
-  const itemsSubtotal = basketItems.reduce((sum, item) => sum + item.price, 0);
-  const deliveryUpcharge = deliveryType === "priority" ? 2.49 : 0;
-  const serviceFee = 1.00;
-  const deliveryFee = 0;
-  const roundUpAmount = roundUp ? 0.32 : 0;
-  const orderTotal = itemsSubtotal + deliveryUpcharge + serviceFee + deliveryFee + roundUpAmount;
+  const itemsSubtotal = (mainItem?.price || 0) + extraItems.reduce((sum, item) => sum + item.price, 0);
+  const serviceFee = 0.99;
+  const roundUpAmount = roundUp ? 0.52 : 0;
+  const orderTotal = itemsSubtotal + serviceFee + roundUpAmount;
+  const savings = (0.16 + 0.79).toFixed(2);
+
+  const suggestedItems = [
+    { name: "Popcorn Chicken", cal: "307 kcal", price: "£5.99", img: "https://brand-uk.assets.kfc.co.uk/2022-11/MOBORDER_REGULAR_POPCORN_CHICKEN_1200x800%20%281%29.jpg" },
+    { name: "Regular Gravy", cal: "105 kcal", price: "£1.99", img: "https://brand-uk.assets.kfc.co.uk/2022-11/MOBORDER_REGULAR_GRAVY_1200x800.jpg" },
+    { name: "Corn Cob", cal: "163 kcal", price: "£1.99", img: "https://brand-uk.assets.kfc.co.uk/2022-11/MOBORDER_CORN_COB_1200x800.jpg" },
+    { name: "Regular Coleslaw", cal: "126 kcal", price: "£1.99", img: "https://brand-uk.assets.kfc.co.uk/2022-11/MOBORDER_REGULAR_COLESLAW_1200x800.jpg" },
+    { name: "Regular Beans", cal: "167 kcal", price: "£1.99", img: "https://brand-uk.assets.kfc.co.uk/2022-11/MOBORDER_REGULAR_BEANS_1200x800.jpg" },
+  ];
 
   return (
     <div className="h-full flex flex-col bg-bg-app">
@@ -628,211 +644,168 @@ function CheckoutScreen({ order, onBack }) {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        {/* Delivery */}
-        <SectionHeader title="Delivery" trailing={<span className="text-[14px] text-action-teal font-bold">Change</span>} />
-        <div className="bg-bg-surface mx-0">
-          <button onClick={() => setDeliveryType("standard")} className="w-full flex items-center px-4 py-3 text-left">
-            <RadioButton selected={deliveryType === "standard"} onChange={() => setDeliveryType("standard")} />
-            <div className="ml-3 flex-1">
-              <p className="text-[16px] text-text-primary leading-6">Standard delivery</p>
-              <p className="text-[14px] text-text-muted leading-5">30-40 mins</p>
-            </div>
-          </button>
-          <Divider inset />
-          <button onClick={() => setDeliveryType("priority")} className="w-full flex items-center px-4 py-3 text-left">
-            <RadioButton selected={deliveryType === "priority"} onChange={() => setDeliveryType("priority")} />
-            <div className="ml-3 flex-1">
-              <p className="text-[16px] text-text-primary leading-6">Priority Delivery ⚡</p>
-              <p className="text-[14px] text-text-muted leading-5">Delivered directly to you.</p>
-            </div>
-            <span className="text-[16px] text-text-primary">+ £2.49</span>
-          </button>
+        <SectionHeader title="Basket" />
+        <div className="px-4 pb-3">
+          <div className="flex items-center gap-1">
+            <p className="text-[12px] text-text-muted leading-4 whitespace-nowrap">If anyone eating has an allergy, contact the restaurant</p>
+            <ChevronRight />
+          </div>
         </div>
 
-        {/* Basket */}
-        <SectionHeader title="Basket" />
-        <div className="bg-bg-surface">
-          {basketItems.map((item, i) => (
+        <div className="mx-4 border border-border-subtle rounded-lg overflow-hidden bg-bg-surface">
+          {mainItem && (
+            <div className="flex items-start px-4 py-3">
+              <span className="text-[14px] text-text-primary w-8 shrink-0">{mainItem.qty}x</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[16px] font-bold text-text-primary leading-6">{mainItem.name}</p>
+                {mainItem.subtitle && <p className="text-[14px] text-text-muted leading-5">{mainItem.subtitle}</p>}
+              </div>
+              <div className="flex items-center gap-1 shrink-0 ml-2">
+                <span className="text-[16px] text-text-primary">£{mainItem.price.toFixed(2)}</span>
+                <ChevronRight />
+              </div>
+            </div>
+          )}
+          {extraItems.map((item, i) => (
             <div key={i}>
+              <Divider />
               <div className="flex items-start px-4 py-3">
-                <span className="text-[14px] text-text-muted w-8 shrink-0">{item.qty}x</span>
-                <div className="flex-1">
+                <span className="text-[14px] text-text-primary w-8 shrink-0">{item.qty}x</span>
+                <div className="flex-1 min-w-0">
                   <p className="text-[16px] text-text-primary leading-6">{item.name}</p>
-                  {item.subtitle && <p className="text-[14px] text-text-muted leading-5">{item.subtitle}</p>}
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 ml-2">
                   <span className="text-[16px] text-text-primary">£{item.price.toFixed(2)}</span>
-                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                    <path d="M6.75 4.5L11.25 9L6.75 13.5" stroke="#1ba69c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ChevronRight />
                 </div>
               </div>
-              {i < basketItems.length - 1 && <Divider inset />}
             </div>
           ))}
         </div>
 
-        {/* Vouchers and savings */}
-        <SectionHeader title="Vouchers and savings" />
-        <div className="bg-bg-surface">
+        <div className="pt-3 pb-2 px-4">
+          <p className="text-[14px] font-bold text-text-primary leading-5">People also added</p>
+        </div>
+        <div className="flex gap-2 overflow-x-auto px-4 pb-4">
+          {suggestedItems.map((item, i) => (
+            <div key={i} className="shrink-0 w-[200px] border border-border-subtle rounded-lg overflow-hidden bg-bg-surface flex items-center p-2 gap-3">
+              <div className="w-[60px] h-[60px] rounded-md bg-[#f5f5f5] overflow-hidden shrink-0">
+                <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1 min-w-0 py-0.5">
+                <p className="text-[14px] font-bold text-text-primary leading-5 truncate">{item.name}</p>
+                <p className="text-[12px] text-text-muted leading-4">{item.cal}</p>
+                <p className="text-[14px] text-text-primary leading-5">{item.price}</p>
+              </div>
+              <div className="w-7 h-7 rounded-full border border-border-subtle flex items-center justify-center shrink-0">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 3v8M3 7h8" stroke="#1ba69c" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <SectionHeader title="Savings and offers" />
+        <div className="mx-4 border border-border-subtle rounded-lg bg-bg-surface">
           <div className="flex items-center px-4 py-3">
-            <span className="text-[14px] text-brand mr-2">●</span>
-            <div className="flex-1">
-              <p className="text-[14px] text-text-primary leading-5">Offer (spend £10, get 5% off)</p>
-              <p className="text-[12px] text-text-muted leading-4">Applied to your item prices</p>
+            <span className="flex-1 text-[16px] text-text-primary leading-6">View offers</span>
+            <ChevronRight />
+          </div>
+        </div>
+
+        <SectionHeader title="Credit" />
+        <div className="mx-4 border border-border-subtle rounded-lg bg-bg-surface px-4 py-3">
+          <p className="text-[14px] text-action-teal leading-5">View credit</p>
+        </div>
+
+        <SectionHeader title="Summary" trailing={
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="11" r="10.5" stroke="#00CCBC" />
+            <text x="11" y="15.5" textAnchor="middle" fill="#00CCBC" fontSize="13" fontWeight="bold">?</text>
+          </svg>
+        } />
+        <div className="mx-4 border border-border-subtle rounded-lg bg-bg-surface overflow-hidden">
+          <div className="flex items-center px-4 py-3">
+            <span className="flex-1 text-[16px] text-text-primary leading-6">Basket subtotal</span>
+            <span className="text-[16px] text-text-primary">£{itemsSubtotal.toFixed(2)}</span>
+          </div>
+          <Divider inset />
+          <div className="flex items-center px-4 py-3">
+            <span className="flex-1 text-[16px] text-text-primary leading-6">Service fee</span>
+            <span className="text-[14px] text-text-muted line-through mr-2">£1.15</span>
+            <span className="text-[16px] text-text-primary">£{serviceFee.toFixed(2)}</span>
+          </div>
+          <Divider inset />
+          <div className="flex items-center px-4 py-3">
+            <span className="flex-1 text-[16px] text-text-primary leading-6">Delivery fee</span>
+            <span className="text-[14px] text-text-muted line-through mr-2">£0.79</span>
+            <span className="text-[16px] text-brand font-bold">Free</span>
+          </div>
+        </div>
+        <div className="mx-4 mt-2 rounded-lg overflow-hidden">
+          <div className="bg-[#7B2D8E] px-4 py-3">
+            <p className="text-[14px] font-bold text-white leading-5">You're saving £{savings} on fees!</p>
+          </div>
+          <div className="bg-[#F3E8F7] px-4 py-2.5">
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px]">🚲</span>
+                <span className="text-[14px] text-text-primary leading-5">£0.16 service fee saving</span>
+              </div>
+              <div className="w-[42px] h-[18px] rounded bg-[#7B2D8E] flex items-center justify-center">
+                <span className="text-white text-[9px] font-bold">plus</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px]">🚲</span>
+                <span className="text-[14px] text-text-primary leading-5">£0.79 delivery fee saving</span>
+              </div>
+              <div className="w-[42px] h-[18px] rounded bg-[#7B2D8E] flex items-center justify-center">
+                <span className="text-white text-[9px] font-bold">plus</span>
+              </div>
             </div>
           </div>
-          <Divider inset />
-          <div className="flex items-center px-4 py-3">
-            <span className="text-[14px] text-[#C94046] mr-2">●</span>
-            <span className="flex-1 text-[14px] text-text-primary leading-5">Offer (Plus offer)</span>
-            <span className="text-[14px] text-text-primary">-£6.38</span>
-          </div>
-          <Divider inset />
-          <div className="flex items-center px-4 py-3">
-            <span className="text-[14px] text-brand mr-2">●</span>
-            <span className="flex-1 text-[14px] text-text-primary leading-5">Voucher (Challenges)</span>
-            <span className="text-[14px] text-text-primary">-£10.00</span>
-          </div>
-          <Divider inset />
-          <div className="px-4 py-2">
-            <p className="text-[14px] text-action-teal leading-5">Add voucher code/gift card</p>
-          </div>
-          <div className="px-4 pb-3">
-            <p className="text-[14px] text-action-teal leading-5">View vouchers</p>
-          </div>
         </div>
 
-        {/* Basket subtotal */}
-        <div className="bg-bg-surface mt-2">
-          <div className="flex items-center px-4 py-3">
-            <span className="flex-1 text-[16px] font-bold text-text-primary">Basket subtotal</span>
-            <span className="text-[14px] text-text-muted line-through mr-2">£{(itemsSubtotal + 16.38).toFixed(2)}</span>
-            <span className="text-[16px] font-bold text-text-primary">£{itemsSubtotal.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* Credit earning */}
-        <div className="mx-4 mt-3 p-3 bg-[#E8F8F5] rounded-lg flex items-start gap-2">
-          <span className="text-brand text-[14px]">●</span>
-          <div className="flex-1">
-            <p className="text-[14px] font-bold text-text-primary leading-5">You'll earn £{(itemsSubtotal * 0.1).toFixed(2)} credit</p>
-            <p className="text-[12px] text-text-muted leading-4">This is 10% of your basket subtotal, to spend on future orders.</p>
-          </div>
-          <div className="w-8 h-8 rounded bg-brand flex items-center justify-center shrink-0">
-            <span className="text-white text-[10px] font-bold">plus</span>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="bg-bg-surface mt-3">
-          <div className="flex items-center px-4 py-3">
-            <div className="flex-1">
-              <p className="text-[16px] text-text-primary leading-6">Notes for restaurant</p>
-              <p className="text-[14px] text-text-muted leading-5">None provided</p>
-            </div>
-            <span className="text-[14px] text-action-teal font-bold">Add</span>
-          </div>
-          <Divider inset />
+        <div className="bg-bg-surface mt-4">
           <div className="flex items-center px-4 py-3">
             <span className="flex-1 text-[16px] text-text-primary leading-6">Add disposable cutlery</span>
             <ToggleSwitch on={cutlery} onToggle={() => setCutlery(!cutlery)} />
           </div>
         </div>
 
-        {/* Charity donation */}
         <SectionHeader title="Charity donation" />
-        <div className="bg-bg-surface">
+        <div className="mx-4 border border-border-subtle rounded-lg bg-bg-surface overflow-hidden">
           <div className="flex items-start px-4 py-3 gap-3">
-            <div className="w-10 h-10 bg-bg-app rounded-lg flex items-center justify-center shrink-0">
-              <span className="text-[10px] text-text-muted text-center leading-tight">Trussell Trust</span>
+            <div className="w-[48px] h-[48px] bg-white border border-border-subtle rounded-lg flex items-center justify-center shrink-0">
+              <div className="text-center">
+                <div className="text-[8px] font-bold text-[#00A1A1] leading-tight">Trussell</div>
+                <div className="text-[5px] text-text-muted leading-tight">Ending hunger together</div>
+              </div>
             </div>
             <div className="flex-1">
-              <p className="text-[14px] font-bold text-text-primary leading-5">Donate to the Trussell Trust</p>
-              <p className="text-[12px] text-text-muted leading-4">Support local food banks to help people facing hunger in the UK today.</p>
+              <p className="text-[16px] font-bold text-text-primary leading-6">Donate to Trussell</p>
+              <p className="text-[13px] text-text-muted leading-4 mt-0.5">Support local food banks to help people facing hunger in the UK today</p>
             </div>
           </div>
           <Divider inset />
           <div className="flex items-center px-4 py-3">
-            <span className="flex-1 text-[16px] text-text-primary leading-6">Round up for charity</span>
-            <span className="text-[16px] text-text-primary mr-3">£0.32</span>
+            <span className="flex-1 text-[16px] text-text-primary leading-6">Round up</span>
+            <span className="text-[16px] text-text-primary mr-3">£{roundUpAmount.toFixed(2)}</span>
             <ToggleSwitch on={roundUp} onToggle={() => setRoundUp(!roundUp)} />
           </div>
-        </div>
-
-        {/* Fees */}
-        <SectionHeader title="Fees" trailing={
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <circle cx="9" cy="9" r="8.5" stroke="#BAC3C3" />
-            <text x="9" y="13" textAnchor="middle" fill="#BAC3C3" fontSize="11" fontWeight="bold">i</text>
-          </svg>
-        } />
-        <div className="bg-bg-surface">
-          <div className="flex items-center px-4 py-3">
-            <span className="flex-1 text-[16px] text-text-primary leading-6">Service fee</span>
-            <span className="text-[14px] text-text-muted line-through mr-2">£1.49</span>
-            <span className="text-[16px] text-text-primary">£1.00</span>
-          </div>
           <Divider inset />
-          <div className="flex items-center px-4 py-3">
-            <span className="flex-1 text-[16px] text-text-primary leading-6">Delivery fee</span>
-            <span className="text-[14px] text-text-muted line-through mr-2">£1.49</span>
-            <span className="text-[16px] text-brand font-bold">Free</span>
-          </div>
-        </div>
-        <div className="mx-4 mt-2 p-3 bg-brand rounded-lg">
-          <p className="text-[14px] font-bold text-white leading-5">You're saving £1.98 on fees!</p>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[12px] text-white/80">● £0.49 service fee saving</span>
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[12px] text-white/80">● £1.49 delivery fee saving</span>
-          </div>
-        </div>
-
-        {/* Credit */}
-        <SectionHeader title="Credit" />
-        <div className="bg-bg-surface">
-          <div className="flex items-center px-4 py-3">
-            <div className="flex-1">
-              <p className="text-[16px] text-text-primary leading-6">Available credit</p>
-              <p className="text-[14px] text-text-muted leading-5">£30.31 balance</p>
+          <div className="px-4 py-3">
+            <p className="text-[14px] text-text-muted leading-5 mb-2">Or donate more...</p>
+            <div className="flex gap-2">
+              {["2.00", "5.00", "10.00"].map((amt) => (
+                <button key={amt} className="flex-1 h-10 border border-brand rounded-lg flex items-center justify-center">
+                  <span className="text-[14px] font-bold text-brand">£{amt}</span>
+                </button>
+              ))}
             </div>
-            <ToggleSwitch on={credit} onToggle={() => setCredit(!credit)} />
-          </div>
-          <div className="px-4 pb-3">
-            <p className="text-[14px] text-action-teal leading-5">View credit</p>
-          </div>
-        </div>
-
-        {/* Rider tip + Order total */}
-        <div className="bg-bg-surface mt-2">
-          <div className="flex items-center px-4 py-3">
-            <span className="flex-1 text-[16px] text-text-primary leading-6">Rider tip</span>
-            <div className="flex items-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="9" cy="9" r="8.5" stroke="#BAC3C3" />
-              </svg>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="9" cy="9" r="9" fill="#00CCBC" />
-              </svg>
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="9" cy="9" r="8.5" stroke="#BAC3C3" />
-              </svg>
-            </div>
-            <span className="text-[16px] text-text-primary ml-3">£0.00</span>
-          </div>
-          <Divider />
-          <div className="flex items-center px-4 py-3">
-            <span className="flex-1 text-[16px] font-bold text-text-primary leading-6">Order total</span>
-            <span className="text-[16px] font-bold text-text-primary">£{orderTotal.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div className="mx-4 mt-2 mb-2 p-2 bg-[#E8F8F5] rounded-lg flex items-center justify-center gap-1">
-          <span className="text-[12px] text-brand font-bold">Saving £22.76, earning £{(itemsSubtotal * 0.1).toFixed(2)} credit!</span>
-          <div className="w-5 h-5 rounded bg-brand flex items-center justify-center">
-            <span className="text-white text-[8px] font-bold">plus</span>
           </div>
         </div>
 
@@ -840,10 +813,42 @@ function CheckoutScreen({ order, onBack }) {
       </div>
 
       <div className="shrink-0 relative z-20">
-        <div className="bg-bg-surface shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.12)] px-4 py-4">
-          <button className="w-full h-12 bg-brand-button rounded flex items-center justify-center">
-            <span className="text-[16px] font-bold text-brand-dark leading-6">Go to checkout</span>
-          </button>
+        <div className="bg-bg-surface shadow-[0px_-2px_8px_0px_rgba(0,0,0,0.12)]">
+          <div className="flex items-center px-4 py-2.5">
+            <div className="flex items-center gap-1.5 flex-1">
+              <span className="text-[16px] text-text-primary leading-6">Rider tip</span>
+              <span className="text-[16px]">🙂</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="w-7 h-7 rounded-full border border-border-subtle flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M3 7h8" stroke="#BAC3C3" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+              <button className="w-7 h-7 rounded-full bg-brand flex items-center justify-center">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M7 3v8M3 7h8" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+              <span className="text-[16px] text-text-primary ml-1">£0.00</span>
+            </div>
+          </div>
+          <Divider />
+          <div className="flex items-center px-4 py-2.5">
+            <span className="flex-1 text-[16px] font-bold text-text-primary leading-6">Order total</span>
+            <span className="text-[16px] font-bold text-text-primary">£{orderTotal.toFixed(2)}</span>
+          </div>
+          <div className="mx-4 mt-1 mb-3 p-2.5 bg-[#E8F8F5] rounded-lg flex items-center justify-between">
+            <span className="text-[13px] text-brand font-bold">You're saving a total of £{savings}!</span>
+            <div className="w-6 h-6 rounded bg-brand flex items-center justify-center shrink-0">
+              <span className="text-white text-[8px] font-bold">plus</span>
+            </div>
+          </div>
+          <div className="px-4 pb-4">
+            <button className="w-full h-12 bg-brand-button rounded flex items-center justify-center">
+              <span className="text-[16px] font-bold text-brand-dark leading-6">Go to checkout</span>
+            </button>
+          </div>
         </div>
         <HomeIndicator />
       </div>
@@ -856,8 +861,6 @@ export default function App() {
   const [targetScreen, setTargetScreen] = useState("single");
   const [resetKey, setResetKey] = useState(0);
   const [orderData, setOrderData] = useState(null);
-
-  const positions = { single: 0, upsell: -1, checkout: -2 };
 
   const handleReset = () => {
     setResetKey((k) => k + 1);
@@ -872,29 +875,42 @@ export default function App() {
     setTimeout(() => setActiveScreen(screen), 300);
   };
 
-  const translateX = `translateX(${positions[targetScreen] * 100}%)`;
+  const showCheckout = targetScreen === "checkout";
+  const itemTarget = showCheckout
+    ? (activeScreen === "checkout" ? (orderData?.type === "meal" ? "upsell" : "single") : activeScreen)
+    : targetScreen;
+  const itemTranslateX = itemTarget === "upsell" ? "translateX(-100%)" : "translateX(0%)";
 
   return (
-    <div className="w-full h-full relative overflow-hidden bg-black">
-      <StatusBar onReset={handleReset} />
-      <SheetTop />
+    <div className="w-full h-full flex flex-col overflow-hidden bg-black">
+      <StatusBar onReset={handleReset} light={showCheckout} />
 
-      <div className="relative flex-1" style={{ height: "calc(100% - 65px)" }} key={resetKey}>
-        <div
-          className="absolute inset-0 transition-transform duration-300 ease-in-out"
-          style={{ transform: translateX }}
-        >
-          <div className="absolute inset-0" style={{ width: "300%", display: "flex" }}>
-            <div style={{ width: "33.333%" }} className="h-full">
-              <SingleItemScreen onUpgrade={() => navigateTo("upsell")} onAdd={(data) => navigateTo("checkout", data)} />
-            </div>
-            <div style={{ width: "33.333%" }} className="h-full">
-              <ItemUpsellScreen onBack={() => navigateTo("single")} onAdd={(data) => navigateTo("checkout", data)} />
-            </div>
-            <div style={{ width: "33.333%" }} className="h-full">
-              <CheckoutScreen order={orderData} onBack={() => navigateTo(orderData?.type === "meal" ? "upsell" : "single")} />
+      <div className="relative flex-1 overflow-hidden">
+        <div className="h-full flex flex-col">
+          <SheetTop />
+          <div className="relative flex-1" key={resetKey}>
+            <div
+              className="absolute inset-0 transition-transform duration-300 ease-in-out"
+              style={{ transform: itemTranslateX }}
+            >
+              <div className="absolute inset-0" style={{ width: "200%", display: "flex" }}>
+                <div style={{ width: "50%" }} className="h-full">
+                  <SingleItemScreen onUpgrade={() => navigateTo("upsell")} onAdd={(data) => navigateTo("checkout", data)} />
+                </div>
+                <div style={{ width: "50%" }} className="h-full">
+                  <ItemUpsellScreen onBack={() => navigateTo("single")} onAdd={(data) => navigateTo("checkout", data)} />
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div
+          className="absolute inset-0 z-50 transition-transform duration-300 ease-in-out"
+          style={{ transform: showCheckout ? "translateX(0)" : "translateX(100%)" }}
+          key={`checkout-${resetKey}`}
+        >
+          <CheckoutScreen order={orderData} onBack={() => navigateTo(orderData?.type === "meal" ? "upsell" : "single")} />
         </div>
       </div>
     </div>
